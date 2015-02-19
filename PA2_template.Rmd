@@ -1,0 +1,193 @@
+---
+title: "Reproducible Research - Peer Assessment 2"
+author: "Dawn LaComb"
+date: "Monday, February 16, 2015"
+output: html_document
+---
+#Analysis Report of Health & Economic Impacts of Severe Weather Events - Based on NOAA Storm Database
+
+# SYNOPSIS
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.  
+
+The Analysis examines which events are most harmful with respec to health and which have the greatest economic consequence.
+
+# DATA PROCESSING
+All data processing was conducted using R version 3.1.2 (2014-10-31) and the R Studio IDE Version 0.98.1102. Annotated R code is shown in the following sections.
+
+
+```{r set_work_dir}
+## Set working directory and turn on necessary libraries
+
+setwd("c:/coursera/")
+library("dplyr", lib.loc="~/R/win-library/3.1")
+library("lubridate", lib.loc="~/R/win-library/3.1")
+
+## Read Source Data
+
+stormdata <- read.csv(bzfile("repdata-data-StormData.csv.bz2"), sep=",", header=TRUE)
+```
+
+Explore the storm data file and extract the size.
+```{r exp_data}
+dim(stormdata)
+
+```
+Examining the first couple of rows of the dataset shows that all columns have been clearly labeled and of the 37 variables we only need 7 of them.
+
+```{r read_columns}
+head(stormdata)
+```
+Extracting only the data that contains weather events and health and economic impact data.
+```{r resize_table}
+
+
+##Extracting the data that contain weather event, health and economic impact data
+
+keptcols <- c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", 
+               "CROPDMGEXP")
+stormevt <- stormdata[keptcols]
+
+head(stormevt)
+```
+Cleaning the Data
+```{r Property_Damage_Data_Prep}
+## Property Damage Data Preparation
+## Check for and correct bad data (na or other non data character) in property Damage 
+## and replace alpha with numeric for charting purposes
+
+unique(stormevt$PROPDMGEXP)
+
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "+"] <- 0
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "-"] <- 0
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "?"] <- 0
+
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "K"] <- 1000
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "M"] <- 1000000 
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "m"] <- 1000000
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "h"] <- 100
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "H"] <- 100
+stormevt$PROPEXP[stormevt$PROPDMGEXP == ""] <- 1
+stormevt$PROPEXP[stormevt$PROPDMGEXP == 0] <- 1
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "B"] <- 1000000000
+
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "5"] <- 100000
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "6"] <- 1000000
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "7"] <- 10000000
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "8"] <- 100000000
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "4"] <- 10000
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "2"] <- 100
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "3"] <- 1000
+stormevt$PROPEXP[stormevt$PROPDMGEXP == "1"] <- 10
+```
+```{r cal_prop_damage,results='hide'}
+## Calculate value of Property Damage and add to dataframe
+
+mutate(stormevt, 
+       (stormevt$PROPDMGVAL = stormevt$PROPDMG * stormevt$PROPEXP))
+
+```
+```{r data_prop}
+summary(stormevt)
+```
+
+```{r crop_damage_data_prep}
+## Crop Damage DAta Preparation
+
+## Check for and correct bad data (na or other non data character) in crop Damage 
+## and replace alpha with numeric for charting purposes
+
+unique(stormevt$CROPDMGEXP)
+
+stormevt$CROPEXP[stormevt$CROPDMGEXP == "M"] <- 1000000
+stormevt$CROPEXP[stormevt$CROPDMGEXP == "m"] <- 1000000
+stormevt$CROPEXP[stormevt$CROPDMGEXP == "K"] <- 1000
+stormevt$CROPEXP[stormevt$CROPDMGEXP == "k"] <- 1000
+stormevt$CROPEXP[stormevt$CROPDMGEXP == "B"] <- 1000000000
+stormevt$CROPEXP[stormevt$CROPDMGEXP == ""] <- 1
+stormevt$CROPEXP[stormevt$CROPDMGEXP == "?"] <- 0
+stormevt$CROPEXP[stormevt$CROPDMGEXP == "0"] <- 1
+stormevt$CROPEXP[stormevt$CROPDMGEXP == "2"] <- 100
+
+```
+```{r crop_dmg_val,results='hide'}
+## Calculate value of Crop Damage and add to dataframe
+
+mutate(stormevt, 
+       (stormevt$CROPDMGVAL = stormevt$CROPDMG * stormevt$CROPEXP))
+
+```
+```{r crop_summary}
+summary(stormevt)
+```
+
+Data aggregation
+
+```{r Aggregate_data}
+# Aggregate Data by EVTYPE using SUM
+fatal <- aggregate(FATALITIES ~ EVTYPE, data = stormevt, FUN = sum)
+injury <- aggregate(INJURIES ~ EVTYPE, data = stormevt, FUN = sum)
+propdmg <- aggregate(PROPDMGVAL ~ EVTYPE, data = stormevt, FUN = sum)
+cropdmg <- aggregate(CROPDMGVAL ~ EVTYPE, data = stormevt, FUN = sum)
+`````
+# RESULTS
+
+Find the 10 most harmful events to Property and Crops:
+
+```{r dmg _results}
+## Find Highest Property and Crop Damage
+
+toppropdmg <- propdmg[order(-propdmg$PROPDMGVAL), ][1:10, ]
+# get top 10 events with highest crop damage
+topcropdmg <- cropdmg[order(-cropdmg$CROPDMGVAL), ][1:10, ]
+```
+
+Across the United States, which types of events have the greatest economic consequences?
+
+Plot of results Shows that Floods, Hurricane/Typhoon and Tornado are the top 3 causes of Property damage while Drought, Flooding and Ice Storms are the top causes for Crop Damage.
+
+```{r, dmg_chart, echo=TRUE}
+## Chart Property Damage
+par(mfrow = c(1, 2), mar = c(12, 4, 3, 2), mgp = c(3, 1, 0), cex = 0.8)
+barplot(toppropdmg$PROPDMGVAL/(10^5), las = 3, names.arg = toppropdmg$EVTYPE, 
+        main = "Events w/ Highest Property Damage", ylab = "$ in billions", 
+        col = "red")
+main = ("Events Compared to Property and Crop Damage")
+barplot(topcropdmg$CROPDMGVAL/(10^5), las = 3, names.arg = topcropdmg$EVTYPE, 
+        main = "Events With Highest Crop Damage", ylab = "$ in billions", 
+        col = "blue")
+mtext("Economic Impacts of Severe Weather Events",font=4, side = 3, line = -1, outer = TRUE)
+
+```
+
+Find the top 5 events related to Fatalities and injuries in the Unided States.
+
+```{r health_results}
+# Find top 5 Highest Fatalities
+
+topfatal <- fatal[order(-fatal$FATALITIES), ][1:5, ]
+# Find top 8 Highest Injuries
+
+topinjure <- injury[order(-injury$INJURIES), ][1:5, ]
+```
+
+Across the United States, which types of events are most harmful with respect to the populations health?
+
+For Severe Weather Events the charts show that Tornado's are by far the #1
+cause of both Fatalities and Injuries in the United States. 
+
+```{r, health_charts,echo=TRUE}
+## Chart Fatalities and Injuries
+## Figure 3
+
+par(mfrow = c(1,2))
+barplot(topfatal$FATALITIES/(10^5), las = 3, names.arg = topfatal$EVTYPE, main = "Events w/ Highest Fatalities", 
+        ylab = "# of fatalities", col = "blue")
+title = ("Weather Events Compared to Fatalities and Injuries")
+barplot(topinjure$INJURIES/(10^5), las = 3, names.arg = topinjure$EVTYPE, main = "Events w/ Highest Injuries", 
+        ylab = "# of injuries", col = "red")
+mtext("Economic Impacts of Severe Weather Events",font=4, side = 3, line = -1, outer = TRUE)
+```
+
+
